@@ -8,6 +8,5 @@ services:
     envVars:
       - key: PORT
         value: 5000
-      - key: TELEGRAM_TOKEN
-        sync: false
     healthCheckPath: /health
+    autoDeploy: false  # جلوگیری از deploy خودکار
