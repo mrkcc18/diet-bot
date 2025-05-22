@@ -1,71 +1,66 @@
 import os
 from telegram.ext import Application, CommandHandler, MessageHandler, filters
 from database import init_db, add_user, save_answers
-from code_generator import generate_code
-from questions import get_question
+from questions import QUESTIONS
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
+app = Application.builder().token(TOKEN).build()
+
 user_sessions = {}
 
 async def start(update, context):
     user = update.message.from_user
     user_id = user.id
     
-    # تولید کد یکتا
-    unique_code = generate_code(user.first_name)
+    # تولید کد یکتا (ساده شده)
+    unique_code = f"{user.first_name[:2]}{user.id%1000}"
     
-    # ذخیره اطلاعات اولیه کاربر
     add_user(user_id, user.first_name, unique_code)
-    
-    # شروع پرسش‌ها
     user_sessions[user_id] = {
-        'unique_code': unique_code,
         'current_question': 0,
-        'answers': {}
+        'answers': {},
+        'unique_code': unique_code
     }
     
     await update.message.reply_text(
         f"سلام {user.first_name}!\n"
         f"کد پیگیری شما: {unique_code}\n"
-        "لطفاً به سوالات زیر پاسخ دهید:\n\n"
-        f"سوال ۱: {get_question(0)}"
+        f"سوال 1: {QUESTIONS[0]}"
     )
 
-async def handle_answer(update, context):
+async def handle_message(update, context):
     user_id = update.message.from_user.id
     if user_id not in user_sessions:
-        await update.message.reply_text("لطفاً ابتدا دستور /start را وارد کنید.")
+        await update.message.reply_text("لطفاً با دستور /start شروع کنید.")
         return
     
     session = user_sessions[user_id]
     current_q = session['current_question']
-    
-    # ذخیره پاسخ
     session['answers'][current_q] = update.message.text
     
-    # ارسال سوال بعدی
-    next_question = current_q + 1
-    if next_question < len(get_question.__self__.QUESTIONS):
-        session['current_question'] = next_question
-        await update.message.reply_text(f"سوال {next_question + 1}: {get_question(next_question)}")
+    next_q = current_q + 1
+    if next_q < len(QUESTIONS):
+        session['current_question'] = next_q
+        await update.message.reply_text(f"سوال {next_q+1}: {QUESTIONS[next_q]}")
     else:
-        # پایان پرسش‌ها
         save_answers(user_id, session['answers'])
         await update.message.reply_text(
-            "✅ پاسخ‌های شما با موفقیت ثبت شد!\n"
-            "کارشناسان ما در حال طراحی رژیم اختصاصی شما هستند.\n"
+            "✅ پاسخ‌های شما ثبت شد!\n"
             f"کد پیگیری: {session['unique_code']}"
         )
         del user_sessions[user_id]
 
 def main():
     init_db()
-    app = Application.builder().token(TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_answer))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    app.run_polling()
+    # تنظیمات بهینه برای Render
+    app.run_polling(
+        drop_pending_updates=True,
+        close_loop=False,
+        timeout=20
+    )
 
 if __name__ == "__main__":
     main()
