@@ -9,8 +9,10 @@ from telegram.ext import (
     filters
 )
 from questions import questions
+from utils.save_json import save_response_json
+from utils.database import save_to_db
+from utils.code_generator import generate_user_code
 
-# تعریف یک حالت برای شروع و ادامه پرسش‌ها
 ASKING = range(1)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -31,14 +33,23 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(questions[current_q])
         return ASKING
     else:
-        # همه سوالات پاسخ داده شده
-        summary = "\n\n".join(
-            [f"{q}\n{a}" for q, a in context.user_data["answers"].items()]
-        )
-        await update.message.reply_text("✅ فرم شما کامل شد. این خلاصه‌ی پاسخ‌های شماست:\n\n")
-        await update.message.reply_text(summary)
+        answers = context.user_data["answers"]
+        name = answers.get("نام و نام خانوادگی:")
+        user_code = generate_user_code(name)
 
-        # در مرحله بعدی می‌تونیم ذخیره‌سازی JSON / SQLite / PDF انجام بدیم
+        data = {
+            "user_code": user_code,
+            "name": name,
+            "answers": answers,
+        }
+
+        json_path = save_response_json(user_code, data)
+        save_to_db(user_code, name, json_path)
+
+        summary = "\n\n".join([f"{q}\n{a}" for q, a in answers.items()])
+        await update.message.reply_text(f"✅ فرم شما کامل شد. خلاصه پاسخ‌ها:\n\n{summary}")
+        await update.message.reply_text(f"📌 کد پیگیری شما: {user_code}\n\n✅ اطلاعات ذخیره شدند.")
+
         return ConversationHandler.END
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -69,4 +80,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
