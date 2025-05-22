@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # تنظیمات اولیه
-BOT_TOKEN = os.getenv("7708407032:AAEIPAhw7khIzc1L0Q6MEhhjo7iXsEyKgWs")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 # ایجاد اپلیکیشن FastAPI
@@ -44,4 +44,3 @@ async def webhook(request: Request):
     update = Update.de_json(data, application.bot)
     await application.process_update(update)
     return {"status": "ok"}
-
