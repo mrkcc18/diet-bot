@@ -39,7 +39,6 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(questions[current_q])
         return ASKING
     else:
-        # فرم تمام شد
         answers = context.user_data["answers"]
         name = answers.get("نام و نام خانوادگی:")
         user_code = generate_user_code(name)
@@ -78,14 +77,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text("✅ رسید دریافت شد. در حال ارسال به مدیر برای تایید...")
 
-    # ارسال برای مدیر
     admin_id = int(os.getenv("ADMIN_ID"))
     await context.bot.send_message(chat_id=admin_id, text=f"📥 اطلاعات جدید دریافت شد\nکد: {user_code}\nنام: {name}")
     await context.bot.send_message(chat_id=admin_id, text=f"📋 خلاصه پاسخ‌ها:\n\n{summary}")
     if os.path.exists(pdf_path):
         await context.bot.send_document(chat_id=admin_id, document=InputFile(pdf_path))
     if os.path.exists(payment_path):
-        await context.bot.send_photo(chat_id=admin_id, photo=InputFile(payment_path))
+        await context.bot.send_document(chat_id=admin_id, document=InputFile(payment_path), caption="🧾 تصویر رسید پرداخت")
 
     print(f"[PAYMENT RECEIVED + ADMIN NOTIFIED] {payment_path}")
 
