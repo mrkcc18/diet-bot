@@ -8,5 +8,5 @@ services:
     envVars:
       - key: PORT
         value: 5000
-      - key: TELEGRAM_TOKEN
+      - key: 7708407032:AAEIPAhw7khIzc1L0Q6MEhhjo7iXsEyKgWs
         sync: false  # توکن را دستی در پنل تنظیم کنید
