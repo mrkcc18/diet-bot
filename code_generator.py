@@ -1,6 +1,5 @@
 from datetime import datetime
 import random
-import string
 
 def generate_code(name):
     initials = ''.join([word[0] for word in name.split()[:2]]).upper()
