@@ -19,7 +19,7 @@ def generate_pdf(user_code: str, name: str, answers: dict) -> str:
     # عنوان اصلی
     pdf.set_right_margin(10)
     pdf.set_left_margin(10)
-    pdf.set_font("DejaVu", "B", 14)
+    pdf.set_font("DejaVu", "", 14)
     pdf.cell(0, 10, txt=f"فرم رژیم غذایی - {name}", ln=True, align="C")
 
     # فاصله
