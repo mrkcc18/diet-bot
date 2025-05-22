@@ -1,10 +1,11 @@
 services:
   - type: web
     name: diet-bot
-    env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python main.py"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
     envVars:
+      - key: PORT
+        value: 5000
       - key: TELEGRAM_TOKEN
-        value: ""
+        value: your_bot_token_here
