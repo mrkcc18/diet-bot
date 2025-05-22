@@ -1,40 +1,37 @@
-
 import sqlite3
-from datetime import datetime
+
+DB_NAME = "diet_bot.db"
 
 def init_db():
-    """ایجاد جدول کاربران اگر وجود نداشته باشد"""
-    conn = sqlite3.connect('diet_bot.db', check_same_thread=False)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS users
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  user_id INTEGER UNIQUE,
-                  name TEXT,
-                  unique_code TEXT,
-                  registration_date TEXT,
-                  answers TEXT,
-                  status TEXT DEFAULT 'pending')''')
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            name TEXT,
+            age INTEGER,
+            weight REAL,
+            height REAL
+        )
+    """)
     conn.commit()
     conn.close()
 
-def add_user(user_id, name, unique_code):
-    """افزودن کاربر جدید به دیتابیس"""
-    conn = sqlite3.connect('diet_bot.db', check_same_thread=False)
-    c = conn.cursor()
-    try:
-        c.execute("INSERT INTO users (user_id, name, unique_code, registration_date) VALUES (?, ?, ?, ?)",
-                  (user_id, name, unique_code, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
-        conn.commit()
-    except sqlite3.IntegrityError:
-        pass  # اگر کاربر از قبل وجود داشت
-    finally:
-        conn.close()
-
-def save_answers(user_id, answers):
-    """ذخیره پاسخ‌های کاربر"""
-    conn = sqlite3.connect('diet_bot.db', check_same_thread=False)
-    c = conn.cursor()
-    c.execute("UPDATE users SET answers = ?, status = 'completed' WHERE user_id = ?",
-              (str(answers), user_id))
+def add_user(user_id, name, age, weight, height):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO users (user_id, name, age, weight, height)
+        VALUES (?, ?, ?, ?, ?)
+    """, (user_id, name, age, weight, height))
     conn.commit()
     conn.close()
+
+def get_user(user_id):
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    return user
+
