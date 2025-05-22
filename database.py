@@ -3,7 +3,8 @@ import sqlite3
 from datetime import datetime
 
 def init_db():
-    conn = sqlite3.connect('diet_bot.db')
+    """ایجاد جدول کاربران اگر وجود نداشته باشد"""
+    conn = sqlite3.connect('diet_bot.db', check_same_thread=False)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,23 +18,21 @@ def init_db():
     conn.close()
 
 def add_user(user_id, name, unique_code):
-    conn = sqlite3.connect('diet_bot.db')
+    """افزودن کاربر جدید به دیتابیس"""
+    conn = sqlite3.connect('diet_bot.db', check_same_thread=False)
     c = conn.cursor()
     try:
         c.execute("INSERT INTO users (user_id, name, unique_code, registration_date) VALUES (?, ?, ?, ?)",
                   (user_id, name, unique_code, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         conn.commit()
     except sqlite3.IntegrityError:
-        pass
+        pass  # اگر کاربر از قبل وجود داشت
     finally:
         conn.close()
-def check_duplicate(user_id):
-    conn = sqlite3.connect('diet_bot.db')
-    c = conn.cursor()
-    c.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
-    return c.fetchone() is not None
+
 def save_answers(user_id, answers):
-    conn = sqlite3.connect('diet_bot.db')
+    """ذخیره پاسخ‌های کاربر"""
+    conn = sqlite3.connect('diet_bot.db', check_same_thread=False)
     c = conn.cursor()
     c.execute("UPDATE users SET answers = ?, status = 'completed' WHERE user_id = ?",
               (str(answers), user_id))
