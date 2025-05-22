@@ -1,10 +1,10 @@
+
 import sqlite3
 from datetime import datetime
 
 def init_db():
     conn = sqlite3.connect('diet_bot.db')
     c = conn.cursor()
-    
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   user_id INTEGER UNIQUE,
@@ -24,7 +24,7 @@ def add_user(user_id, name, unique_code):
                   (user_id, name, unique_code, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
         conn.commit()
     except sqlite3.IntegrityError:
-        pass  # کاربر از قبل وجود دارد
+        pass
     finally:
         conn.close()
 
