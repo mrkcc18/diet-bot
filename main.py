@@ -1,4 +1,3 @@
-
 import os
 from telegram import Update
 from telegram.ext import (
@@ -29,7 +28,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("waiting_for_payment"):
-        return  # منتظر رسید هستیم، پس سوالی نباید پرسیده بشه
+        return  # رسید در حال انتظاره
 
     current_q = context.user_data["current_q"]
     context.user_data["answers"][questions[current_q]] = update.message.text
@@ -83,6 +82,30 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ رسید شما دریافت شد، منتظر بررسی مدیر باشید.")
     print(f"[PAYMENT RECEIVED] {payment_path}")
 
+async def verify_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    admin_id = os.getenv("ADMIN_ID")
+    if str(update.effective_user.id) != str(admin_id):
+        await update.message.reply_text("⛔ فقط مدیر می‌تواند پرداخت‌ها را تأیید کند.")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("❗ لطفاً کد کاربر را به صورت `/verify <code>` وارد کنید.")
+        return
+
+    user_code = context.args[0]
+    receipt_path = f"data/payments/{user_code}.jpg"
+
+    if not os.path.exists(receipt_path):
+        await update.message.reply_text("❌ رسیدی برای این کد یافت نشد.")
+        return
+
+    # وضعیت در دیتابیس (در آینده)
+    await update.message.reply_text(f"✅ رسید مربوط به {user_code} تأیید شد.")
+    print(f"[VERIFIED] {user_code}")
+
+async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🆔 Your Telegram ID is: {update.effective_user.id}")
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("فرم متوقف شد ❌")
     return ConversationHandler.END
@@ -103,6 +126,8 @@ def main():
 
     app.add_handler(conv_handler)
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(CommandHandler("verify", verify_payment))
+    app.add_handler(CommandHandler("myid", get_id))
 
     app.run_webhook(
         listen="0.0.0.0",
