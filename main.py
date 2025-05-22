@@ -64,3 +64,15 @@ def main():
 
 if __name__ == "__main__":
     main()
+# در انتهای فایل main.py این تغییرات را اعمال کنید:
+if __name__ == "__main__":
+    # تنظیمات ویژه برای جلوگیری از Conflict
+    app.run_polling(
+        drop_pending_updates=True,
+        close_loop=True,
+        stop_signals=None,  # جلوگیری از restart خودکار
+        timeout=30,
+        read_timeout=30,
+        connect_timeout=30,
+        pool_timeout=30
+    )
