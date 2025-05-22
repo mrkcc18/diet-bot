@@ -1,12 +1,13 @@
 services:
   - type: web
     name: diet-bot
-    env: python
     plan: free
+    env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
       - key: PORT
         value: 5000
-      - key: 7708407032:AAEIPAhw7khIzc1L0Q6MEhhjo7iXsEyKgWs
-        sync: false  # توکن را دستی در پنل تنظیم کنید
+      - key: TELEGRAM_TOKEN
+        sync: false
+    healthCheckPath: /health
