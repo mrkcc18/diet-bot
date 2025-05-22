@@ -2,10 +2,11 @@ services:
   - type: web
     name: diet-bot
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py"
     envVars:
-      - key: BOT_TOKEN
-        sync: false
+      - key: TELEGRAM_TOKEN
+        value: "توکن"
       - key: WEBHOOK_URL
-        sync: false
+        value: "https://your-render-app-url.onrender.com"
