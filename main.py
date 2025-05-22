@@ -89,4 +89,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+    await update.message.reply_text("لطفاً تصویر رسید پرداخت خود را ارسال کنید 💳")
+context.user_data["waiting_for_payment"] = True
+return ASKING  # منتظر پیام بعدی بمون
+
 
