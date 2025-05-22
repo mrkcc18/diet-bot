@@ -7,12 +7,11 @@ def init_db():
     
     c.execute('''CREATE TABLE IF NOT EXISTS users
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  user_id INTEGER,
+                  user_id INTEGER UNIQUE,
                   name TEXT,
                   unique_code TEXT,
                   registration_date TEXT,
                   answers TEXT,
-                  payment_proof TEXT DEFAULT NULL,
                   status TEXT DEFAULT 'pending')''')
     conn.commit()
     conn.close()
@@ -20,7 +19,19 @@ def init_db():
 def add_user(user_id, name, unique_code):
     conn = sqlite3.connect('diet_bot.db')
     c = conn.cursor()
-    c.execute("INSERT INTO users (user_id, name, unique_code, registration_date) VALUES (?, ?, ?, ?)",
-              (user_id, name, unique_code, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    try:
+        c.execute("INSERT INTO users (user_id, name, unique_code, registration_date) VALUES (?, ?, ?, ?)",
+                  (user_id, name, unique_code, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        pass  # کاربر از قبل وجود دارد
+    finally:
+        conn.close()
+
+def save_answers(user_id, answers):
+    conn = sqlite3.connect('diet_bot.db')
+    c = conn.cursor()
+    c.execute("UPDATE users SET answers = ?, status = 'completed' WHERE user_id = ?",
+              (str(answers), user_id))
     conn.commit()
     conn.close()
