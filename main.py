@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # تنظیمات اولیه
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("7708407032:AAEIPAhw7khIzc1L0Q6MEhhjo7iXsEyKgWs")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 # ایجاد اپلیکیشن FastAPI
