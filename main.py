@@ -1,78 +1,47 @@
 import os
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from database import init_db, add_user, save_answers
-from questions import QUESTIONS
+import logging
+from fastapi import FastAPI, Request
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-app = Application.builder().token(TOKEN).build()
+# تنظیمات اولیه
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-user_sessions = {}
+# ایجاد اپلیکیشن FastAPI
+app = FastAPI()
 
-async def start(update, context):
-    user = update.message.from_user
-    user_id = user.id
-    
-    # تولید کد یکتا (ساده شده)
-    unique_code = f"{user.first_name[:2]}{user.id%1000}"
-    
-    add_user(user_id, user.first_name, unique_code)
-    user_sessions[user_id] = {
-        'current_question': 0,
-        'answers': {},
-        'unique_code': unique_code
-    }
-    
-    await update.message.reply_text(
-        f"سلام {user.first_name}!\n"
-        f"کد پیگیری شما: {unique_code}\n"
-        f"سوال 1: {QUESTIONS[0]}"
-    )
+# ایجاد اپلیکیشن تلگرام
+application = Application.builder().token(BOT_TOKEN).build()
 
-async def handle_message(update, context):
-    user_id = update.message.from_user.id
-    if user_id not in user_sessions:
-        await update.message.reply_text("لطفاً با دستور /start شروع کنید.")
-        return
-    
-    session = user_sessions[user_id]
-    current_q = session['current_question']
-    session['answers'][current_q] = update.message.text
-    
-    next_q = current_q + 1
-    if next_q < len(QUESTIONS):
-        session['current_question'] = next_q
-        await update.message.reply_text(f"سوال {next_q+1}: {QUESTIONS[next_q]}")
-    else:
-        save_answers(user_id, session['answers'])
-        await update.message.reply_text(
-            "✅ پاسخ‌های شما ثبت شد!\n"
-            f"کد پیگیری: {session['unique_code']}"
-        )
-        del user_sessions[user_id]
+# هندلر برای دستور /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("سلام! به ربات رژیم غذایی خوش آمدید.")
 
-def main():
-    init_db()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    # تنظیمات بهینه برای Render
-    app.run_polling(
-        drop_pending_updates=True,
-        close_loop=False,
-        timeout=20
-    )
+# هندلر برای پیام‌های متنی
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"شما گفتید: {update.message.text}")
 
-if __name__ == "__main__":
-    main()
-# در انتهای فایل main.py این تغییرات را اعمال کنید:
-if __name__ == "__main__":
-    # تنظیمات ویژه برای جلوگیری از Conflict
-    app.run_polling(
-        drop_pending_updates=True,
-        close_loop=True,
-        stop_signals=None,  # جلوگیری از restart خودکار
-        timeout=30,
-        read_timeout=30,
-        connect_timeout=30,
-        pool_timeout=30
-    )
+# افزودن هندلرها به اپلیکیشن
+application.add_handler(CommandHandler("start", start))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+# تنظیم Webhook
+@app.on_event("startup")
+async def on_startup():
+    await application.bot.set_webhook(url=WEBHOOK_URL)
+
+# مسیر دریافت آپدیت‌ها از تلگرام
+@app.post("/webhook")
+async def webhook(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return {"status": "ok"}
+
