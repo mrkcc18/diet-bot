@@ -1,37 +1,30 @@
 import sqlite3
+from datetime import datetime
 
-DB_NAME = "diet_bot.db"
+DB_NAME = "data.db"
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
+    c = conn.cursor()
+    c.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
             name TEXT,
-            age INTEGER,
-            weight REAL,
-            height REAL
+            timestamp TEXT
         )
     """)
     conn.commit()
     conn.close()
 
-def add_user(user_id, name, age, weight, height):
+def save_user_info(code, name):
     conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR REPLACE INTO users (user_id, name, age, weight, height)
-        VALUES (?, ?, ?, ?, ?)
-    """, (user_id, name, age, weight, height))
+    c = conn.cursor()
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT INTO users (code, name, timestamp) VALUES (?, ?, ?)", (code, name, timestamp))
     conn.commit()
     conn.close()
 
-def get_user(user_id):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    user = cursor.fetchone()
-    conn.close()
-    return user
+# ایجاد دیتابیس وقتی فایل import بشه
+init_db()
 
