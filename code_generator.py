@@ -1,8 +1,10 @@
-from datetime import datetime
 import random
+from datetime import datetime
 
-def generate_code(name):
-    initials = ''.join([word[0] for word in name.split()[:2]]).upper()
-    random_digit = str(random.randint(1, 9))
-    date_part = datetime.now().strftime("%d%m%H")
-    return f"{initials}{random_digit}{date_part}"
+def generate_user_code(full_name: str) -> str:
+    now = datetime.now()
+    initials = ''.join([word[0] for word in full_name.split()[:2]]).upper()
+    factor = str(random.randint(1, 9))
+    year = str(now.year)[-1]
+    date_code = now.strftime("%m%d%H")
+    return f"{initials}{factor}{year}{date_code}"
