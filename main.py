@@ -64,8 +64,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.user_data.get("waiting_for_payment"):
         return
 
-    photo = update.message.photo[-1]
-    file = await photo.get_file()
+    doc = update.message.document
+    file = await doc.get_file()
     user_code = context.user_data.get("user_code")
     name = context.user_data["answers"].get("نام و نام خانوادگی:")
     pdf_path = context.user_data.get("pdf_path")
@@ -164,7 +164,7 @@ def main():
     )
 
     app.add_handler(conv_handler)
-    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.Document.IMAGE, handle_photo))
     app.add_handler(CommandHandler("verify", verify_payment))
     app.add_handler(CommandHandler("submit_diet", submit_diet))
     app.add_handler(CommandHandler("myid", get_id))
