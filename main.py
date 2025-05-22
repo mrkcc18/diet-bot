@@ -60,32 +60,30 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_payment"] = True
         return ASKING
 
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.user_data.get("waiting_for_payment"):
         return
 
-    doc = update.message.document
-    file = await doc.get_file()
     user_code = context.user_data.get("user_code")
     name = context.user_data["answers"].get("نام و نام خانوادگی:")
     pdf_path = context.user_data.get("pdf_path")
     summary = "\n\n".join([f"{q}\n{a}" for q, a in context.user_data["answers"].items()])
-
-    os.makedirs("data/payments", exist_ok=True)
-    payment_path = f"data/payments/{user_code}.jpg"
-    await file.download_to_drive(payment_path)
+    admin_id = int(os.getenv("ADMIN_ID"))
 
     await update.message.reply_text("✅ رسید دریافت شد. در حال ارسال به مدیر برای تایید...")
 
-    admin_id = int(os.getenv("ADMIN_ID"))
     await context.bot.send_message(chat_id=admin_id, text=f"📥 اطلاعات جدید دریافت شد\nکد: {user_code}\nنام: {name}")
     await context.bot.send_message(chat_id=admin_id, text=f"📋 خلاصه پاسخ‌ها:\n\n{summary}")
     if os.path.exists(pdf_path):
         await context.bot.send_document(chat_id=admin_id, document=InputFile(pdf_path))
-    if os.path.exists(payment_path):
-        await context.bot.send_document(chat_id=admin_id, document=InputFile(payment_path), caption="🧾 تصویر رسید پرداخت")
 
-    print(f"[PAYMENT RECEIVED + ADMIN NOTIFIED] {payment_path}")
+    # Forward the received file or photo directly to admin
+    if update.message.document:
+        await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
+    elif update.message.photo:
+        await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
+
+    print(f"[PAYMENT FORWARDED TO ADMIN] by {user_code}")
 
 async def verify_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_id = os.getenv("ADMIN_ID")
@@ -98,12 +96,6 @@ async def verify_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     user_code = context.args[0]
-    receipt_path = f"data/payments/{user_code}.jpg"
-
-    if not os.path.exists(receipt_path):
-        await update.message.reply_text("❌ رسیدی برای این کد یافت نشد.")
-        return
-
     await update.message.reply_text(f"✅ رسید مربوط به {user_code} تأیید شد.")
     print(f"[VERIFIED] {user_code}")
 
@@ -158,13 +150,15 @@ def main():
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            ASKING: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_answer)],
+            ASKING: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_answer),
+                MessageHandler(filters.Document.ALL | filters.PHOTO, handle_file_forward),
+            ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )
 
     app.add_handler(conv_handler)
-    app.add_handler(MessageHandler(filters.Document.IMAGE, handle_photo))
     app.add_handler(CommandHandler("verify", verify_payment))
     app.add_handler(CommandHandler("submit_diet", submit_diet))
     app.add_handler(CommandHandler("myid", get_id))
