@@ -1,6 +1,7 @@
 services:
   - type: web
     name: diet-bot
+    env: python
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
@@ -8,4 +9,4 @@ services:
       - key: PORT
         value: 5000
       - key: TELEGRAM_TOKEN
-        value: your_bot_token_here
+        sync: false  # توکن را دستی در پنل تنظیم کنید
