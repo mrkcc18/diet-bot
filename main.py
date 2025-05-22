@@ -1,3 +1,4 @@
+
 import os
 from telegram import Update
 from telegram.ext import (
@@ -19,12 +20,17 @@ ASKING = range(1)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["answers"] = {}
     context.user_data["current_q"] = 0
+    context.user_data["user_code"] = None
+    context.user_data["waiting_for_payment"] = False
 
     await update.message.reply_text("سلام! بریم سراغ فرم رژیم غذایی ✍️")
     await update.message.reply_text(questions[0])
     return ASKING
 
 async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if context.user_data.get("waiting_for_payment"):
+        return  # منتظر رسید هستیم، پس سوالی نباید پرسیده بشه
+
     current_q = context.user_data["current_q"]
     context.user_data["answers"][questions[current_q]] = update.message.text
 
@@ -34,9 +40,11 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(questions[current_q])
         return ASKING
     else:
+        # فرم تمام شد
         answers = context.user_data["answers"]
         name = answers.get("نام و نام خانوادگی:")
         user_code = generate_user_code(name)
+        context.user_data["user_code"] = user_code
 
         data = {
             "user_code": user_code,
@@ -44,22 +52,36 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "answers": answers,
         }
 
-        # ذخیره در JSON
         json_path = save_response_json(user_code, data)
-
-        # ذخیره در دیتابیس
         save_to_db(user_code, name, json_path)
-
-        # ساخت PDF
         pdf_path = generate_pdf(user_code, name, answers)
         print(f"[PDF CREATED] {pdf_path}")
 
-        # نمایش خلاصه به کاربر
         summary = "\n\n".join([f"{q}\n{a}" for q, a in answers.items()])
         await update.message.reply_text(f"✅ فرم شما کامل شد. خلاصه پاسخ‌ها:\n\n{summary}")
-        await update.message.reply_text(f"📌 کد پیگیری شما: {user_code}\n\n✅ اطلاعات ذخیره شدند.")
+        await update.message.reply_text(f"📌 کد پیگیری شما: {user_code}")
+        await update.message.reply_text("لطفاً تصویر رسید پرداخت خود را ارسال کنید 💳")
 
-        return ConversationHandler.END
+        context.user_data["waiting_for_payment"] = True
+        return ASKING
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.user_data.get("waiting_for_payment"):
+        return
+
+    photo = update.message.photo[-1]
+    file = await photo.get_file()
+    user_code = context.user_data.get("user_code")
+    if not user_code:
+        await update.message.reply_text("کد شما یافت نشد. لطفاً فرم را دوباره پر کنید.")
+        return
+
+    os.makedirs("data/payments", exist_ok=True)
+    payment_path = f"data/payments/{user_code}.jpg"
+    await file.download_to_drive(payment_path)
+
+    await update.message.reply_text("✅ رسید شما دریافت شد، منتظر بررسی مدیر باشید.")
+    print(f"[PAYMENT RECEIVED] {payment_path}")
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("فرم متوقف شد ❌")
@@ -80,6 +102,7 @@ def main():
     )
 
     app.add_handler(conv_handler)
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
 
     app.run_webhook(
         listen="0.0.0.0",
@@ -89,8 +112,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    await update.message.reply_text("لطفاً تصویر رسید پرداخت خود را ارسال کنید 💳")
-context.user_data["waiting_for_payment"] = True
-return ASKING  # منتظر پیام بعدی بمون
-
 
