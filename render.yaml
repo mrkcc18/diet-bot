@@ -1,12 +1,11 @@
 services:
   - type: web
     name: diet-bot
-    plan: free
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python main.py
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
-      - key: PORT
-        value: 5000
-    healthCheckPath: /health
-    autoDeploy: false  # جلوگیری از deploy خودکار
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
