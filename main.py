@@ -116,6 +116,41 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("فرم متوقف شد ❌")
     return ConversationHandler.END
 
+async def submit_diet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    admin_id = os.getenv("ADMIN_ID")
+    if str(update.effective_user.id) != str(admin_id):
+        await update.message.reply_text("⛔ فقط مدیر می‌تواند رژیم را ارسال کند.")
+        return
+
+    if len(context.args) != 1:
+        await update.message.reply_text("❗ لطفاً کد کاربر را به صورت `/submit_diet <code>` وارد کنید.")
+        return
+
+    user_code = context.args[0]
+    json_path = f"data/responses/{user_code}.json"
+    pdf_path = f"data/pdfs/{user_code}.pdf"
+
+    if not os.path.exists(json_path):
+        await update.message.reply_text("❌ اطلاعاتی برای این کد یافت نشد.")
+        return
+
+    import json
+    with open(json_path, "r") as f:
+        data = json.load(f)
+
+    user_id = data.get("telegram_user_id")
+    if not user_id:
+        await update.message.reply_text("❌ شناسه کاربر یافت نشد.")
+        return
+
+    if os.path.exists(pdf_path):
+        await context.bot.send_message(chat_id=user_id, text="📄 رژیم غذایی شما آماده است:")
+        await context.bot.send_document(chat_id=user_id, document=InputFile(pdf_path))
+        await update.message.reply_text(f"✅ رژیم برای کاربر {user_code} ارسال شد.")
+        print(f"[DIET SENT] to {user_id}")
+    else:
+        await update.message.reply_text("❌ فایل رژیم یافت نشد.")
+
 def main():
     TOKEN = os.getenv("TELEGRAM_TOKEN")
     WEBHOOK_URL = os.getenv("WEBHOOK_URL")
@@ -133,6 +168,7 @@ def main():
     app.add_handler(conv_handler)
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(CommandHandler("verify", verify_payment))
+    app.add_handler(CommandHandler("submit_diet", submit_diet))
     app.add_handler(CommandHandler("myid", get_id))
 
     app.run_webhook(
