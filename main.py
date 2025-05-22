@@ -1,5 +1,5 @@
 import os
-from telegram import Update
+from telegram import Update, InputFile
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -28,7 +28,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("waiting_for_payment"):
-        return  # رسید در حال انتظاره
+        return
 
     current_q = context.user_data["current_q"]
     context.user_data["answers"][questions[current_q]] = update.message.text
@@ -49,18 +49,15 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "user_code": user_code,
             "name": name,
             "answers": answers,
+            "telegram_user_id": update.effective_user.id
         }
 
         json_path = save_response_json(user_code, data)
         save_to_db(user_code, name, json_path)
         pdf_path = generate_pdf(user_code, name, answers)
-        print(f"[PDF CREATED] {pdf_path}")
+        context.user_data["pdf_path"] = pdf_path
 
-        summary = "\n\n".join([f"{q}\n{a}" for q, a in answers.items()])
-        await update.message.reply_text(f"✅ فرم شما کامل شد. خلاصه پاسخ‌ها:\n\n{summary}")
-        await update.message.reply_text(f"📌 کد پیگیری شما: {user_code}")
-        await update.message.reply_text("لطفاً تصویر رسید پرداخت خود را ارسال کنید 💳")
-
+        await update.message.reply_text(f"✅ فرم شما کامل شد. کد پیگیری شما: {user_code}\nلطفاً تصویر رسید پرداخت را ارسال کنید.")
         context.user_data["waiting_for_payment"] = True
         return ASKING
 
@@ -71,16 +68,26 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1]
     file = await photo.get_file()
     user_code = context.user_data.get("user_code")
-    if not user_code:
-        await update.message.reply_text("کد شما یافت نشد. لطفاً فرم را دوباره پر کنید.")
-        return
+    name = context.user_data["answers"].get("نام و نام خانوادگی:")
+    pdf_path = context.user_data.get("pdf_path")
+    summary = "\n\n".join([f"{q}\n{a}" for q, a in context.user_data["answers"].items()])
 
     os.makedirs("data/payments", exist_ok=True)
     payment_path = f"data/payments/{user_code}.jpg"
     await file.download_to_drive(payment_path)
 
-    await update.message.reply_text("✅ رسید شما دریافت شد، منتظر بررسی مدیر باشید.")
-    print(f"[PAYMENT RECEIVED] {payment_path}")
+    await update.message.reply_text("✅ رسید دریافت شد. در حال ارسال به مدیر برای تایید...")
+
+    # ارسال برای مدیر
+    admin_id = int(os.getenv("ADMIN_ID"))
+    await context.bot.send_message(chat_id=admin_id, text=f"📥 اطلاعات جدید دریافت شد\nکد: {user_code}\nنام: {name}")
+    await context.bot.send_message(chat_id=admin_id, text=f"📋 خلاصه پاسخ‌ها:\n\n{summary}")
+    if os.path.exists(pdf_path):
+        await context.bot.send_document(chat_id=admin_id, document=InputFile(pdf_path))
+    if os.path.exists(payment_path):
+        await context.bot.send_photo(chat_id=admin_id, photo=InputFile(payment_path))
+
+    print(f"[PAYMENT RECEIVED + ADMIN NOTIFIED] {payment_path}")
 
 async def verify_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_id = os.getenv("ADMIN_ID")
@@ -99,7 +106,6 @@ async def verify_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ رسیدی برای این کد یافت نشد.")
         return
 
-    # وضعیت در دیتابیس (در آینده)
     await update.message.reply_text(f"✅ رسید مربوط به {user_code} تأیید شد.")
     print(f"[VERIFIED] {user_code}")
 
@@ -137,4 +143,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
