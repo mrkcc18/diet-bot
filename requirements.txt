@@ -1,1 +1,2 @@
 python-telegram-bot[webhooks]==20.6
+fpdf==1.7.2
