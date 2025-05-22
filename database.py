@@ -27,7 +27,11 @@ def add_user(user_id, name, unique_code):
         pass
     finally:
         conn.close()
-
+def check_duplicate(user_id):
+    conn = sqlite3.connect('diet_bot.db')
+    c = conn.cursor()
+    c.execute("SELECT user_id FROM users WHERE user_id=?", (user_id,))
+    return c.fetchone() is not None
 def save_answers(user_id, answers):
     conn = sqlite3.connect('diet_bot.db')
     c = conn.cursor()
