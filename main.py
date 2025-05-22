@@ -1,46 +1,47 @@
-import os
 import logging
-from fastapi import FastAPI, Request
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters, ConversationHandler
+from code_generator import generate_user_code
+from database import save_user_info
 
-# تنظیمات اولیه
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+logging.basicConfig(level=logging.INFO)
 
-# ایجاد اپلیکیشن FastAPI
-app = FastAPI()
+ASK_NAME = 0
 
-# ایجاد اپلیکیشن تلگرام
-application = Application.builder().token(BOT_TOKEN).build()
-
-# هندلر برای دستور /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("سلام! به ربات رژیم غذایی خوش آمدید.")
+    await update.message.reply_text("سلام! به ربات رژیم غذایی خوش اومدی.\nلطفاً نام و نام خانوادگی‌تو وارد کن:")
+    return ASK_NAME
 
-# هندلر برای پیام‌های متنی
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(f"شما گفتید: {update.message.text}")
+async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    full_name = update.message.text
+    code = generate_user_code(full_name)
+    
+    context.user_data["name"] = full_name
+    context.user_data["code"] = code
 
-# افزودن هندلرها به اپلیکیشن
-application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    save_user_info(code, full_name)
+    
+    await update.message.reply_text(f"✅ ثبت‌نام انجام شد!\nکد یکتای شما: {code}")
+    await update.message.reply_text("بزن بریم سراغ سوالات... (در مرحله بعد اضافه می‌شه)")
+    return ConversationHandler.END
 
-# تنظیم Webhook
-@app.on_event("startup")
-async def on_startup():
-    await application.bot.set_webhook(url=WEBHOOK_URL)
+def main():
+    import os
+    TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-# مسیر دریافت آپدیت‌ها از تلگرام
-@app.post("/webhook")
-async def webhook(request: Request):
-    data = await request.json()
-    update = Update.de_json(data, application.bot)
-    await application.process_update(update)
-    return {"status": "ok"}
+    app = ApplicationBuilder().token(TOKEN).build()
+
+    conv = ConversationHandler(
+        entry_points=[CommandHandler("start", start)],
+        states={
+            ASK_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name)],
+        },
+        fallbacks=[],
+    )
+
+    app.add_handler(conv)
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
+
