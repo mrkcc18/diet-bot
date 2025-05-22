@@ -7,6 +7,6 @@ services:
     startCommand: "python main.py"
     envVars:
       - key: TELEGRAM_TOKEN
-        value: "توکن"
+        value: ""
       - key: WEBHOOK_URL
-        value: "https://your-render-app-url.onrender.com"
+        value: ""
