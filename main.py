@@ -12,6 +12,7 @@ from questions import questions
 from utils.save_json import save_response_json
 from utils.database import save_to_db
 from utils.code_generator import generate_user_code
+from utils.generate_pdf import generate_pdf
 
 ASKING = range(1)
 
@@ -43,9 +44,17 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "answers": answers,
         }
 
+        # ذخیره در JSON
         json_path = save_response_json(user_code, data)
+
+        # ذخیره در دیتابیس
         save_to_db(user_code, name, json_path)
 
+        # ساخت PDF
+        pdf_path = generate_pdf(user_code, name, answers)
+        print(f"[PDF CREATED] {pdf_path}")
+
+        # نمایش خلاصه به کاربر
         summary = "\n\n".join([f"{q}\n{a}" for q, a in answers.items()])
         await update.message.reply_text(f"✅ فرم شما کامل شد. خلاصه پاسخ‌ها:\n\n{summary}")
         await update.message.reply_text(f"📌 کد پیگیری شما: {user_code}\n\n✅ اطلاعات ذخیره شدند.")
@@ -80,3 +89,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
