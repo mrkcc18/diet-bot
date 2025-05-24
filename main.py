@@ -1,5 +1,5 @@
 import os
-from telegram import Update, InputFile
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -12,7 +12,6 @@ from questions import questions
 from utils.save_json import save_response_json
 from utils.database import save_to_db
 from utils.code_generator import generate_user_code
-from utils.generate_pdf import generate_pdf
 
 ASKING = range(1)
 
@@ -53,10 +52,16 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         json_path = save_response_json(user_code, data)
         save_to_db(user_code, name, json_path)
-        pdf_path = generate_pdf(user_code, name, answers)
-        context.user_data["pdf_path"] = pdf_path
 
-        await update.message.reply_text(f"✅ فرم شما کامل شد. کد پیگیری شما: {user_code}\nلطفاً تصویر رسید پرداخت را ارسال کنید.")
+        summary = f"📋 *خلاصه پاسخ‌های شما:*
+"
+        summary += f"🔖 کد پیگیری: `{user_code}`\n"
+        summary += f"👤 نام: {name}\n\n"
+        summary += "\n".join([f"▫️ *{q.strip()}*\n{a.strip()}" for q, a in answers.items()])
+
+        await update.message.reply_text("✅ فرم شما کامل شد. لطفاً تصویر رسید پرداخت را ارسال کنید.")
+        await update.message.reply_text(summary, parse_mode="Markdown")
+
         context.user_data["waiting_for_payment"] = True
         return ASKING
 
@@ -66,18 +71,18 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     user_code = context.user_data.get("user_code")
     name = context.user_data["answers"].get("نام و نام خانوادگی:")
-    pdf_path = context.user_data.get("pdf_path")
-    summary = "\n\n".join([f"{q}\n{a}" for q, a in context.user_data["answers"].items()])
+    summary = f"📋 *خلاصه پاسخ‌های کاربر:*
+"
+    summary += f"🔖 کد پیگیری: `{user_code}`\n"
+    summary += f"👤 نام: {name}\n\n"
+    summary += "\n".join([f"▫️ *{q.strip()}*\n{a.strip()}" for q, a in context.user_data["answers"].items()])
+
     admin_id = int(os.getenv("ADMIN_ID"))
 
     await update.message.reply_text("✅ رسید دریافت شد. در حال ارسال به مدیر برای تایید...")
 
-    await context.bot.send_message(chat_id=admin_id, text=f"📥 اطلاعات جدید دریافت شد\nکد: {user_code}\nنام: {name}")
-    await context.bot.send_message(chat_id=admin_id, text=f"📋 خلاصه پاسخ‌ها:\n\n{summary}")
-    if os.path.exists(pdf_path):
-        await context.bot.send_document(chat_id=admin_id, document=InputFile(pdf_path))
+    await context.bot.send_message(chat_id=admin_id, text=summary, parse_mode="Markdown")
 
-    # Forward the received file or photo directly to admin
     if update.message.document:
         await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
     elif update.message.photo:
@@ -118,7 +123,6 @@ async def submit_diet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     user_code = context.args[0]
     json_path = f"data/responses/{user_code}.json"
-    pdf_path = f"data/pdfs/{user_code}.pdf"
 
     if not os.path.exists(json_path):
         await update.message.reply_text("❌ اطلاعاتی برای این کد یافت نشد.")
@@ -133,13 +137,10 @@ async def submit_diet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ شناسه کاربر یافت نشد.")
         return
 
-    if os.path.exists(pdf_path):
-        await context.bot.send_message(chat_id=user_id, text="📄 رژیم غذایی شما آماده است:")
-        await context.bot.send_document(chat_id=user_id, document=InputFile(pdf_path))
-        await update.message.reply_text(f"✅ رژیم برای کاربر {user_code} ارسال شد.")
-        print(f"[DIET SENT] to {user_id}")
-    else:
-        await update.message.reply_text("❌ فایل رژیم یافت نشد.")
+    await context.bot.send_message(chat_id=user_id, text="📄 رژیم غذایی شما آماده است:")
+    await context.bot.send_message(chat_id=user_id, text="⚠️ رژیم در این نسخه به‌صورت دستی توسط مدیر تولید شده است.")
+    await update.message.reply_text(f"✅ رژیم برای کاربر {user_code} ارسال شد.")
+    print(f"[DIET SENT] to {user_id}")
 
 def main():
     TOKEN = os.getenv("TELEGRAM_TOKEN")
