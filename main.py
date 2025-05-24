@@ -1,5 +1,6 @@
 import os
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+import json
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, InputFile
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -67,8 +68,12 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         summary = header + body
 
-        await update.message.reply_text("✅ فرم شما کامل شد. لطفاً تصویر رسید پرداخت را ارسال کنید.")
         await update.message.reply_text(summary, parse_mode="Markdown")
+        await update.message.reply_text(
+            "📸 *لطفاً همین حالا تصویر رسید پرداخت خود را ارسال کنید.*\n"
+            "🕒 بدون ارسال رسید، فرایند بررسی و دریافت رژیم آغاز نمی‌شود.",
+            parse_mode="Markdown"
+        )
 
         context.user_data["waiting_for_payment"] = True
         return ASKING
@@ -106,6 +111,11 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif update.message.photo:
         await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
 
+    # ارسال فایل JSON برای مدیر
+    json_path = f"data/responses/{user_code}.json"
+    if os.path.exists(json_path):
+        await context.bot.send_document(chat_id=admin_id, document=InputFile(json_path))
+
     user_data_map[user_code] = update.effective_user.id
     print(f"[PAYMENT FORWARDED TO ADMIN] by {user_code}")
 
@@ -131,7 +141,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(chat_id=query.from_user.id, text="❌ اطلاعاتی برای این کد یافت نشد.")
             return
 
-        import json
         with open(json_path, "r") as f:
             data = json.load(f)
 
@@ -181,4 +190,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
