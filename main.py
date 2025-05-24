@@ -53,11 +53,10 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         json_path = save_response_json(user_code, data)
         save_to_db(user_code, name, json_path)
 
-        summary = f"📋 *خلاصه پاسخ‌های شما:*
-"
+        summary = f"📋 *خلاصه پاسخ‌های شما:*\n"
         summary += f"🔖 کد پیگیری: `{user_code}`\n"
         summary += f"👤 نام: {name}\n\n"
-        summary += "\n".join([f"▫️ *{q.strip()}*\n{a.strip()}" for q, a in answers.items()])
+        summary += "\n━━━━━━━━━━━\n".join([f"*{q.strip()}*\n{a.strip()}" for q, a in answers.items()])
 
         await update.message.reply_text("✅ فرم شما کامل شد. لطفاً تصویر رسید پرداخت را ارسال کنید.")
         await update.message.reply_text(summary, parse_mode="Markdown")
@@ -71,11 +70,10 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     user_code = context.user_data.get("user_code")
     name = context.user_data["answers"].get("نام و نام خانوادگی:")
-    summary = f"📋 *خلاصه پاسخ‌های کاربر:*
-"
+    summary = f"📋 *خلاصه پاسخ‌های کاربر:*\n"
     summary += f"🔖 کد پیگیری: `{user_code}`\n"
     summary += f"👤 نام: {name}\n\n"
-    summary += "\n".join([f"▫️ *{q.strip()}*\n{a.strip()}" for q, a in context.user_data["answers"].items()])
+    summary += "\n━━━━━━━━━━━\n".join([f"*{q.strip()}*\n{a.strip()}" for q, a in context.user_data["answers"].items()])
 
     admin_id = int(os.getenv("ADMIN_ID"))
 
@@ -172,5 +170,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
