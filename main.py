@@ -1,3 +1,4 @@
+
 import os
 from telegram import Update
 from telegram.ext import (
@@ -53,9 +54,11 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         json_path = save_response_json(user_code, data)
         save_to_db(user_code, name, json_path)
 
-        header = f"📋 *خلاصه پاسخ‌های شما:*
-🔖 کد پیگیری: `{user_code}`
-👤 نام: {name}\n\n"
+        header = (
+            f"📋 *خلاصه پاسخ‌های شما:*\n"
+            f"🔖 کد پیگیری: `{user_code}`\n"
+            f"👤 نام: {name}\n\n"
+        )
         body = "\n\n".join([
             f"━━━━━━━━━━━━━━\n🟦 *{q.strip()}*\n🟩 `{a.strip()}`" for q, a in answers.items()
         ])
@@ -74,9 +77,11 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     user_code = context.user_data.get("user_code")
     name = context.user_data["answers"].get("نام و نام خانوادگی:")
-    summary = f"📋 *خلاصه پاسخ‌های کاربر:*
-🔖 کد پیگیری: `{user_code}`
-👤 نام: {name}\n\n"
+    summary = (
+        f"📋 *خلاصه پاسخ‌های کاربر:*\n"
+        f"🔖 کد پیگیری: `{user_code}`\n"
+        f"👤 نام: {name}\n\n"
+    )
     summary += "\n\n".join([
         f"━━━━━━━━━━━━━━\n🟦 *{q.strip()}*\n🟩 `{a.strip()}`" for q, a in context.user_data["answers"].items()
     ])
@@ -176,5 +181,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
