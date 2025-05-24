@@ -1,4 +1,3 @@
-
 import os
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
@@ -116,20 +115,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     admin_id = os.getenv("ADMIN_ID")
 
     if str(query.from_user.id) != str(admin_id):
-        await query.edit_message_text("⛔ فقط مدیر می‌تواند از این کلیدها استفاده کند.")
+        await context.bot.send_message(chat_id=query.from_user.id, text="⛔ فقط مدیر می‌تواند از این کلیدها استفاده کند.")
         return
 
     action, user_code = query.data.split(":")
 
     if action == "verify":
         await context.bot.send_message(chat_id=user_data_map[user_code], text="✅ رسید شما دریافت و تایید شد.")
-        await query.edit_message_text(f"✅ رسید مربوط به {user_code} تایید شد.")
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✅ رسید مربوط به {user_code} تایید شد.")
         print(f"[VERIFIED] {user_code}")
 
     elif action == "submit":
         json_path = f"data/responses/{user_code}.json"
         if not os.path.exists(json_path):
-            await query.edit_message_text("❌ اطلاعاتی برای این کد یافت نشد.")
+            await context.bot.send_message(chat_id=query.from_user.id, text="❌ اطلاعاتی برای این کد یافت نشد.")
             return
 
         import json
@@ -138,12 +137,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         user_id = data.get("telegram_user_id")
         if not user_id:
-            await query.edit_message_text("❌ شناسه کاربر یافت نشد.")
+            await context.bot.send_message(chat_id=query.from_user.id, text="❌ شناسه کاربر یافت نشد.")
             return
 
         await context.bot.send_message(chat_id=user_id, text="📄 رژیم غذایی شما آماده است:")
         await context.bot.send_message(chat_id=user_id, text="⚠️ رژیم در این نسخه به‌صورت دستی توسط مدیر تولید شده است.")
-        await query.edit_message_text(f"✅ رژیم برای کاربر {user_code} ارسال شد.")
+        await context.bot.send_message(chat_id=query.from_user.id, text=f"✅ رژیم برای کاربر {user_code} ارسال شد.")
         print(f"[DIET SENT] to {user_id}")
 
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -182,3 +181,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
