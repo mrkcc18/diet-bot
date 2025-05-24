@@ -111,10 +111,13 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
     elif update.message.photo:
         await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
 
-    # ارسال فایل JSON برای مدیر
     json_path = f"data/responses/{user_code}.json"
     if os.path.exists(json_path):
+        print(f"[JSON EXISTS] {json_path}")
         await context.bot.send_document(chat_id=admin_id, document=InputFile(json_path))
+        print(f"[JSON SENT] {json_path}")
+    else:
+        print(f"[JSON MISSING] {json_path}")
 
     user_data_map[user_code] = update.effective_user.id
     print(f"[PAYMENT FORWARDED TO ADMIN] by {user_code}")
