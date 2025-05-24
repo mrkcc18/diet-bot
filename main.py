@@ -1,12 +1,13 @@
 
 import os
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
     MessageHandler,
     ConversationHandler,
+    CallbackQueryHandler,
     filters
 )
 from questions import questions
@@ -15,6 +16,8 @@ from utils.database import save_to_db
 from utils.code_generator import generate_user_code
 
 ASKING = range(1)
+
+user_data_map = {}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data["answers"] = {}
@@ -90,28 +93,58 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     await update.message.reply_text("✅ رسید دریافت شد. در حال ارسال به مدیر برای تایید...")
 
-    await context.bot.send_message(chat_id=admin_id, text=summary, parse_mode="Markdown")
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ تایید رسید", callback_data=f"verify:{user_code}"),
+            InlineKeyboardButton("📤 ارسال رژیم", callback_data=f"submit:{user_code}")
+        ]
+    ])
+
+    await context.bot.send_message(chat_id=admin_id, text=summary, parse_mode="Markdown", reply_markup=keyboard)
 
     if update.message.document:
         await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
     elif update.message.photo:
         await context.bot.forward_message(chat_id=admin_id, from_chat_id=update.effective_chat.id, message_id=update.message.message_id)
 
+    user_data_map[user_code] = update.effective_user.id
     print(f"[PAYMENT FORWARDED TO ADMIN] by {user_code}")
 
-async def verify_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
     admin_id = os.getenv("ADMIN_ID")
-    if str(update.effective_user.id) != str(admin_id):
-        await update.message.reply_text("⛔ فقط مدیر می‌تواند پرداخت‌ها را تأیید کند.")
+
+    if str(query.from_user.id) != str(admin_id):
+        await query.edit_message_text("⛔ فقط مدیر می‌تواند از این کلیدها استفاده کند.")
         return
 
-    if len(context.args) != 1:
-        await update.message.reply_text("❗ لطفاً کد کاربر را به صورت `/verify <code>` وارد کنید.")
-        return
+    action, user_code = query.data.split(":")
 
-    user_code = context.args[0]
-    await update.message.reply_text(f"✅ رسید مربوط به {user_code} تأیید شد.")
-    print(f"[VERIFIED] {user_code}")
+    if action == "verify":
+        await context.bot.send_message(chat_id=user_data_map[user_code], text="✅ رسید شما دریافت و تایید شد.")
+        await query.edit_message_text(f"✅ رسید مربوط به {user_code} تایید شد.")
+        print(f"[VERIFIED] {user_code}")
+
+    elif action == "submit":
+        json_path = f"data/responses/{user_code}.json"
+        if not os.path.exists(json_path):
+            await query.edit_message_text("❌ اطلاعاتی برای این کد یافت نشد.")
+            return
+
+        import json
+        with open(json_path, "r") as f:
+            data = json.load(f)
+
+        user_id = data.get("telegram_user_id")
+        if not user_id:
+            await query.edit_message_text("❌ شناسه کاربر یافت نشد.")
+            return
+
+        await context.bot.send_message(chat_id=user_id, text="📄 رژیم غذایی شما آماده است:")
+        await context.bot.send_message(chat_id=user_id, text="⚠️ رژیم در این نسخه به‌صورت دستی توسط مدیر تولید شده است.")
+        await query.edit_message_text(f"✅ رژیم برای کاربر {user_code} ارسال شد.")
+        print(f"[DIET SENT] to {user_id}")
 
 async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🆔 Your Telegram ID is: {update.effective_user.id}")
@@ -119,37 +152,6 @@ async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("فرم متوقف شد ❌")
     return ConversationHandler.END
-
-async def submit_diet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    admin_id = os.getenv("ADMIN_ID")
-    if str(update.effective_user.id) != str(admin_id):
-        await update.message.reply_text("⛔ فقط مدیر می‌تواند رژیم را ارسال کند.")
-        return
-
-    if len(context.args) != 1:
-        await update.message.reply_text("❗ لطفاً کد کاربر را به صورت `/submit_diet <code>` وارد کنید.")
-        return
-
-    user_code = context.args[0]
-    json_path = f"data/responses/{user_code}.json"
-
-    if not os.path.exists(json_path):
-        await update.message.reply_text("❌ اطلاعاتی برای این کد یافت نشد.")
-        return
-
-    import json
-    with open(json_path, "r") as f:
-        data = json.load(f)
-
-    user_id = data.get("telegram_user_id")
-    if not user_id:
-        await update.message.reply_text("❌ شناسه کاربر یافت نشد.")
-        return
-
-    await context.bot.send_message(chat_id=user_id, text="📄 رژیم غذایی شما آماده است:")
-    await context.bot.send_message(chat_id=user_id, text="⚠️ رژیم در این نسخه به‌صورت دستی توسط مدیر تولید شده است.")
-    await update.message.reply_text(f"✅ رژیم برای کاربر {user_code} ارسال شد.")
-    print(f"[DIET SENT] to {user_id}")
 
 def main():
     TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -169,8 +171,7 @@ def main():
     )
 
     app.add_handler(conv_handler)
-    app.add_handler(CommandHandler("verify", verify_payment))
-    app.add_handler(CommandHandler("submit_diet", submit_diet))
+    app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(CommandHandler("myid", get_id))
 
     app.run_webhook(
