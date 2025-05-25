@@ -113,8 +113,8 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     json_path = f"data/responses/{user_code}.json"
     if os.path.exists(json_path):
-        print(f"[JSON EXISTS] {json_path}")
-        await context.bot.send_document(chat_id=admin_id, document=InputFile(json_path))
+        input_file = InputFile(open(json_path, "rb"), filename=os.path.basename(json_path))
+        await context.bot.send_document(chat_id=admin_id, document=input_file, caption=f"📁 فایل JSON اطلاعات کاربر {user_code}")
         print(f"[JSON SENT] {json_path}")
     else:
         print(f"[JSON MISSING] {json_path}")
