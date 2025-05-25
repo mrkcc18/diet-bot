@@ -14,7 +14,7 @@ from questions import questions
 from utils.save_json import save_response_json
 from utils.database import save_to_db
 from utils.code_generator import generate_user_code
-from utils.generate_pdf2 import generate_pdf  # ← استفاده از نسخه جدید PDF
+from utils.generate_pdf2 import generate_pdf  # ← استفاده از نسخه جدید PDF با فونت مناسب
 
 ASKING = range(1)
 
@@ -59,9 +59,12 @@ async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_to_db(user_code, name, json_path)
 
         header = (
-            f"📋 *خلاصه پاسخ‌های شما:*\n"
-            f"🔖 کد پیگیری: {user_code}\n"
-            f"👤 نام: {name}\n\n"
+            f"📋 *خلاصه پاسخ‌های شما:*
+"
+            f"🔖 کد پیگیری: {user_code}
+"
+            f"👤 نام: {name}
+\n"
         )
         body = "\n\n".join([
             f"━━━━━━━━━━━━━━\n🟦 *{q.strip()}*\n🟩 {a.strip()}" for q, a in answers.items()
@@ -86,9 +89,12 @@ async def handle_file_forward(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_code = context.user_data.get("user_code")
     name = context.user_data["answers"].get("نام و نام خانوادگی:")
     summary = (
-        f"📋 *خلاصه پاسخ‌های کاربر:*\n"
-        f"🔖 کد پیگیری: {user_code}\n"
-        f"👤 نام: {name}\n\n"
+        f"📋 *خلاصه پاسخ‌های کاربر:*
+"
+        f"🔖 کد پیگیری: {user_code}
+"
+        f"👤 نام: {name}
+\n"
     )
     summary += "\n\n".join([
         f"━━━━━━━━━━━━━━\n🟦 *{q.strip()}*\n🟩 {a.strip()}" for q, a in context.user_data["answers"].items()
