@@ -1,12 +1,12 @@
 services:
-  - type: web
-    name: diet-bot
+  - type: worker
+    name: telegram-bot
     env: python
-    plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "python main.py"
+    plan: free         # یا starter/pro بسته به نیاز
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
     envVars:
       - key: TELEGRAM_TOKEN
-        value: ""
-      - key: WEBHOOK_URL
-        value: ""
+        sync: false
+      - key: ADMIN_ID
+        sync: false
